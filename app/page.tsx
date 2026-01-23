@@ -1,64 +1,224 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useEffect, useState, useMemo } from 'react';
+import { useSession, signOut } from 'next-auth/react';
+import { LogOut, Settings } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { SearchBar } from '@/components/search-bar';
+import { DepartmentTabs } from '@/components/department-tabs';
+import { AppCard } from '@/components/app-card';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { ApplicationWithDepartments, Department } from '@/types';
+import { toast } from 'sonner';
+import Link from 'next/link';
+import Image from 'next/image';
+
+export default function HomePage() {
+  const { data: session } = useSession();
+  const [applications, setApplications] = useState<ApplicationWithDepartments[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDepartment, setSelectedDepartment] = useState('all');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const [appsRes, deptsRes, favsRes] = await Promise.all([
+        fetch('/api/applications'),
+        fetch('/api/departments'),
+        fetch('/api/favorites'),
+      ]);
+
+      if (appsRes.ok) {
+        const appsData = await appsRes.json();
+        setApplications(appsData);
+      }
+
+      if (deptsRes.ok) {
+        const deptsData = await deptsRes.json();
+        setDepartments(deptsData);
+      }
+
+      if (favsRes.ok) {
+        const favsData = await favsRes.json();
+        setFavorites(favsData);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleFavorite = async (appId: string) => {
+    const isFavorited = favorites.includes(appId);
+
+    // Optimistic update
+    setFavorites((prev) =>
+      isFavorited ? prev.filter((id) => id !== appId) : [...prev, appId]
+    );
+
+    try {
+      if (isFavorited) {
+        await fetch(`/api/favorites?applicationId=${appId}`, {
+          method: 'DELETE',
+        });
+        toast.success('Removed from favorites');
+      } else {
+        await fetch('/api/favorites', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ applicationId: appId }),
+        });
+        toast.success('Added to favorites');
+      }
+    } catch (error) {
+      // Revert on error
+      setFavorites((prev) =>
+        isFavorited ? [...prev, appId] : prev.filter((id) => id !== appId)
+      );
+      toast.error('Failed to update favorites');
+    }
+  };
+
+  const filteredApplications = useMemo(() => {
+    let filtered = applications;
+
+    // Filter by search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (app) =>
+          app.name.toLowerCase().includes(query) ||
+          app.description?.toLowerCase().includes(query)
+      );
+    }
+
+    // Filter by department
+    if (selectedDepartment !== 'all') {
+      filtered = filtered.filter((app) =>
+        app.departments.some((dept) => dept.id === selectedDepartment)
+      );
+    }
+
+    // Sort: favorites first, then alphabetically
+    return filtered.sort((a, b) => {
+      const aFav = favorites.includes(a.id);
+      const bFav = favorites.includes(b.id);
+
+      if (aFav && !bFav) return -1;
+      if (!aFav && bFav) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [applications, searchQuery, selectedDepartment, favorites]);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4 gap-4">
+          <div className="flex-shrink-0">
             <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+              src="/csec_logo.svg"
+              alt="CSEC Logo"
+              width={180}
+              height={60}
+              className="h-10 w-auto"
+              priority
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </div>
+          
+          <div className="flex items-center gap-3 flex-1 max-w-2xl">
+            <DepartmentTabs
+              departments={departments}
+              selectedDepartment={selectedDepartment}
+              onDepartmentChange={setSelectedDepartment}
+            />
+            <SearchBar value={searchQuery} onChange={setSearchQuery} />
+          </div>
+          
+          <div className="flex items-center gap-2">
+            {session?.user?.isAdmin && (
+              <Link href="/admin">
+                <Button variant="outline" size="sm">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Admin
+                </Button>
+              </Link>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <Avatar>
+                    <AvatarFallback>
+                      {session?.user?.name?.charAt(0) || session?.user?.email?.charAt(0) || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{session?.user?.name}</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {session?.user?.email}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => signOut()}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
+      </header>
+
+      {/* Applications Grid */}
+      <main className="container mx-auto px-4 py-8">
+        {filteredApplications.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <p className="text-lg text-muted-foreground">No applications found</p>
+            <p className="text-sm text-muted-foreground">
+              Try adjusting your search or filter
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filteredApplications.map((app) => (
+              <AppCard
+                key={app.id}
+                application={app}
+                isFavorited={favorites.includes(app.id)}
+                onToggleFavorite={toggleFavorite}
+              />
+            ))}
+          </div>
+        )}
       </main>
     </div>
   );
