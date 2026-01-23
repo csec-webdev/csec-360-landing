@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { LogIn } from 'lucide-react';
+import { Suspense } from 'react';
 
-export default function SignInPage() {
+function SignInContent() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/';
 
@@ -66,5 +67,19 @@ export default function SignInPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center" style={{ background: 'linear-gradient(135deg, #C8102E 0%, #8B0A1F 100%)' }}>
+        <div className="w-full max-w-md space-y-8 rounded-2xl bg-white p-12 shadow-2xl">
+          <div className="text-center">Loading...</div>
+        </div>
+      </div>
+    }>
+      <SignInContent />
+    </Suspense>
   );
 }
