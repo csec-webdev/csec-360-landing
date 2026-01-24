@@ -12,10 +12,25 @@ export const dynamic = 'force-dynamic';
 function SignInContent() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/';
+  const error = searchParams.get('error');
 
   const handleSignIn = async () => {
-    await signIn('azure-ad', { callbackUrl });
+    console.log('[SignIn] Initiating sign-in with callback:', callbackUrl);
+    try {
+      const result = await signIn('azure-ad', { 
+        callbackUrl,
+        redirect: true,
+      });
+      console.log('[SignIn] Sign-in result:', result);
+    } catch (error) {
+      console.error('[SignIn] Sign-in error:', error);
+    }
   };
+
+  // Log if there's an error from NextAuth
+  if (error) {
+    console.error('[SignIn] NextAuth error:', error);
+  }
 
   return (
     <div 
@@ -42,6 +57,20 @@ function SignInContent() {
             </h1>
           </div>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="rounded-lg bg-red-50 p-4 text-sm text-red-800">
+            <p className="font-semibold">Authentication Error</p>
+            <p className="mt-1">
+              {error === 'Configuration' && 'There is a problem with the server configuration.'}
+              {error === 'AccessDenied' && 'Access denied. You may not have permission to sign in.'}
+              {error === 'Verification' && 'The verification token has expired or has already been used.'}
+              {!['Configuration', 'AccessDenied', 'Verification'].includes(error) && `Error: ${error}`}
+            </p>
+            <p className="mt-2 text-xs">Check the browser console for more details.</p>
+          </div>
+        )}
 
         {/* Sign In Button */}
         <div className="pt-4">
