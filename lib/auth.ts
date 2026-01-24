@@ -14,7 +14,32 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production' 
+        ? '__Secure-next-auth.session-token' 
+        : 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      },
+    },
+  },
+  debug: true,
   callbacks: {
+    async signIn({ user, account, profile }) {
+      try {
+        console.log('[Auth] signIn callback - User:', user?.email);
+        console.log('[Auth] signIn callback - Account:', account?.provider);
+        console.log('[Auth] signIn callback - Profile:', profile?.email);
+        return true;
+      } catch (error) {
+        console.error('[Auth] signIn callback error:', error);
+        return false;
+      }
+    },
     async jwt({ token, account, profile }) {
       try {
         if (account && profile) {
@@ -49,6 +74,14 @@ export const authOptions: NextAuthOptions = {
         console.error('[Auth] Session callback error:', error);
       }
       return session;
+    },
+    async redirect({ url, baseUrl }) {
+      console.log('[Auth] Redirect callback - url:', url, 'baseUrl:', baseUrl);
+      // Allows relative callback URLs
+      if (url.startsWith('/')) return `${baseUrl}${url}`;
+      // Allows callback URLs on the same origin
+      else if (new URL(url).origin === baseUrl) return url;
+      return baseUrl;
     },
   },
   pages: {
