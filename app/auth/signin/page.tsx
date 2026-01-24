@@ -7,6 +7,8 @@ import { useSearchParams } from 'next/navigation';
 import { LogIn } from 'lucide-react';
 import { Suspense } from 'react';
 
+export const dynamic = 'force-dynamic';
+
 function SignInContent() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/';
