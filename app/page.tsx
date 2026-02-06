@@ -211,18 +211,18 @@ export default function HomePage() {
           <div className="flex items-center gap-3 flex-1 max-w-3xl">
             <div className="flex gap-2 shrink-0">
               <Button
-                variant={viewMode === 'all' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('all')}
-              >
-                All Applications
-              </Button>
-              <Button
                 variant={viewMode === 'my' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setViewMode('my')}
               >
                 My Applications
+              </Button>
+              <Button
+                variant={viewMode === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('all')}
+              >
+                All Applications
               </Button>
             </div>
             {viewMode === 'all' && (
