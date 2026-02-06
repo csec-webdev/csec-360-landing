@@ -27,7 +27,6 @@ export default function HomePage() {
   const [applications, setApplications] = useState<ApplicationWithDepartments[]>([]);
   const [myApplications, setMyApplications] = useState<ApplicationWithDepartments[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [favorites, setFavorites] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [viewMode, setViewMode] = useState<'all' | 'my'>('my');
@@ -39,10 +38,9 @@ export default function HomePage() {
 
   const fetchData = async () => {
     try {
-      const [appsRes, deptsRes, favsRes, myAppsRes] = await Promise.all([
+      const [appsRes, deptsRes, myAppsRes] = await Promise.all([
         fetch('/api/applications'),
         fetch('/api/departments'),
-        fetch('/api/favorites'),
         fetch('/api/my-applications'),
       ]);
 
@@ -56,11 +54,6 @@ export default function HomePage() {
         setDepartments(deptsData);
       }
 
-      if (favsRes.ok) {
-        const favsData = await favsRes.json();
-        setFavorites(favsData);
-      }
-
       if (myAppsRes.ok) {
         const myAppsData = await myAppsRes.json();
         setMyApplications(myAppsData);
@@ -70,37 +63,6 @@ export default function HomePage() {
       toast.error('Failed to load data');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const toggleFavorite = async (appId: string) => {
-    const isFavorited = favorites.includes(appId);
-
-    // Optimistic update
-    setFavorites((prev) =>
-      isFavorited ? prev.filter((id) => id !== appId) : [...prev, appId]
-    );
-
-    try {
-      if (isFavorited) {
-        await fetch(`/api/favorites?applicationId=${appId}`, {
-          method: 'DELETE',
-        });
-        toast.success('Removed from favorites');
-      } else {
-        await fetch('/api/favorites', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ applicationId: appId }),
-        });
-        toast.success('Added to favorites');
-      }
-    } catch (error) {
-      // Revert on error
-      setFavorites((prev) =>
-        isFavorited ? [...prev, appId] : prev.filter((id) => id !== appId)
-      );
-      toast.error('Failed to update favorites');
     }
   };
 
@@ -187,17 +149,10 @@ export default function HomePage() {
       // In "my" view, preserve the custom order
       return filtered;
     } else {
-      // In "all" view, sort: favorites first, then alphabetically
-      return filtered.sort((a, b) => {
-        const aFav = favorites.includes(a.id);
-        const bFav = favorites.includes(b.id);
-
-        if (aFav && !bFav) return -1;
-        if (!aFav && bFav) return 1;
-        return a.name.localeCompare(b.name);
-      });
+      // In "all" view, sort alphabetically
+      return filtered.sort((a, b) => a.name.localeCompare(b.name));
     }
-  }, [applications, myApplications, searchQuery, selectedDepartment, favorites, viewMode]);
+  }, [applications, myApplications, searchQuery, selectedDepartment, viewMode]);
 
   // Pragmatic drag and drop monitor
   useEffect(() => {
@@ -354,8 +309,6 @@ export default function HomePage() {
               <AppCard
                 key={app.id}
                 application={app}
-                isFavorited={favorites.includes(app.id)}
-                onToggleFavorite={toggleFavorite}
                 viewMode={viewMode}
                 isInMyApplications={myApplications.some((myApp) => myApp.id === app.id)}
                 onToggleMyApplication={toggleMyApplication}

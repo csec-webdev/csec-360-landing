@@ -1,6 +1,6 @@
 'use client';
 
-import { Star, ExternalLink, Key, Shield, Lock, Plus, X } from 'lucide-react';
+import { ExternalLink, Key, Shield, Lock, Plus, X } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,8 +22,6 @@ const DEFAULT_APP_IMAGE = 'https://zgjvwacyowlsznpgmwdz.supabase.co/storage/v1/o
 
 interface AppCardProps {
   application: ApplicationWithDepartments;
-  isFavorited: boolean;
-  onToggleFavorite: (appId: string) => void;
   viewMode?: 'all' | 'my';
   isInMyApplications?: boolean;
   onToggleMyApplication?: (appId: string) => void;
@@ -60,8 +58,6 @@ const getAuthLabel = (authType: string) => {
 
 export function AppCard({ 
   application, 
-  isFavorited, 
-  onToggleFavorite,
   viewMode = 'all',
   isInMyApplications = false,
   onToggleMyApplication,
@@ -147,44 +143,26 @@ export function AppCard({
       </div>
       
       <div className="p-5 flex flex-col flex-1">
-        {/* Title and Favorite */}
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <div className="flex-1 min-w-0">
-            {isTruncated ? (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    {titleElement}
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{application.name}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ) : (
-              titleElement
-            )}
-            <Badge variant="secondary" className="mt-1.5 text-xs h-5 inline-flex items-center gap-1">
-              {getAuthIcon(application.auth_type)}
-              {getAuthLabel(application.auth_type)}
-            </Badge>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={(e) => {
-              e.preventDefault();
-              onToggleFavorite(application.id);
-            }}
-            className="shrink-0 h-7 w-7 -mt-1"
-          >
-            <Star
-              className={cn(
-                'h-4 w-4',
-                isFavorited ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'
-              )}
-            />
-          </Button>
+        {/* Title */}
+        <div className="mb-2">
+          {isTruncated ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  {titleElement}
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{application.name}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            titleElement
+          )}
+          <Badge variant="secondary" className="mt-1.5 text-xs h-5 inline-flex items-center gap-1">
+            {getAuthIcon(application.auth_type)}
+            {getAuthLabel(application.auth_type)}
+          </Badge>
         </div>
 
         {/* Description */}
