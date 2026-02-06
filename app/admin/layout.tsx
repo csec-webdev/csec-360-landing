@@ -2,11 +2,12 @@
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Home, LayoutGrid, FolderTree } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Home, LayoutGrid, FolderTree, FileCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -20,12 +21,18 @@ const navItems = [
     href: '/admin/departments',
     icon: FolderTree,
   },
+  {
+    title: 'Requests',
+    href: '/admin/requests',
+    icon: FileCheck,
+  },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
+  const [pendingCount, setPendingCount] = useState(0);
 
   // Handle redirect in useEffect to avoid render-time navigation
   useEffect(() => {
@@ -34,6 +41,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       router.push('/');
     }
   }, [status, session, router]);
+
+  // Fetch pending requests count
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      try {
+        const response = await fetch('/api/application-requests');
+        if (response.ok) {
+          const data = await response.json();
+          const pending = data.filter((req: any) => req.status === 'pending');
+          setPendingCount(pending.length);
+        }
+      } catch (error) {
+        console.error('Error fetching pending requests:', error);
+      }
+    };
+
+    if (status === 'authenticated' && session?.user?.isAdmin) {
+      fetchPendingCount();
+      // Poll every 30 seconds
+      const interval = setInterval(fetchPendingCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [status, session]);
 
   if (status === 'loading') {
     return (
@@ -79,14 +109,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Link>
             {navItems.map((item) => {
               const Icon = item.icon;
+              const showBadge = item.href === '/admin/requests' && pendingCount > 0;
               return (
                 <Link key={item.href} href={item.href}>
                   <Button
                     variant={pathname === item.href ? 'secondary' : 'ghost'}
-                    className={cn('w-full justify-start', pathname === item.href && 'bg-secondary')}
+                    className={cn('w-full justify-start relative', pathname === item.href && 'bg-secondary')}
                   >
                     <Icon className="mr-2 h-4 w-4" />
                     {item.title}
+                    {showBadge && (
+                      <Badge
+                        variant="destructive"
+                        className="ml-auto"
+                      >
+                        {pendingCount}
+                      </Badge>
+                    )}
                   </Button>
                 </Link>
               );

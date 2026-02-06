@@ -2,11 +2,12 @@
 
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useSession, signOut } from 'next-auth/react';
-import { LogOut, Settings } from 'lucide-react';
+import { LogOut, Settings, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SearchBar } from '@/components/search-bar';
 import { DepartmentTabs } from '@/components/department-tabs';
 import { AppCard } from '@/components/app-card';
+import { RequestApplicationDialog } from '@/components/request-application-dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -31,6 +32,7 @@ export default function HomePage() {
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [viewMode, setViewMode] = useState<'all' | 'my'>('my');
   const [loading, setLoading] = useState(true);
+  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -234,6 +236,14 @@ export default function HomePage() {
           </div>
           
           <div className="flex items-center gap-2">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setRequestDialogOpen(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Request App
+            </Button>
             {session?.user?.isAdmin && (
               <Link href="/admin">
                 <Button variant="outline" size="sm">
@@ -318,6 +328,13 @@ export default function HomePage() {
           </div>
         )}
       </main>
+
+      <RequestApplicationDialog
+        open={requestDialogOpen}
+        onOpenChange={setRequestDialogOpen}
+        departments={departments}
+        onSuccess={fetchData}
+      />
     </div>
   );
 }
