@@ -35,7 +35,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Check, X, MoreHorizontal, Eye } from 'lucide-react';
+import { Check, X, MoreHorizontal, Eye, Pencil } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { ImageUpload } from '@/components/image-upload';
 import { toast } from 'sonner';
 
 interface ApplicationRequest {
@@ -59,10 +69,20 @@ export default function RequestsPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [requests, setRequests] = useState<ApplicationRequest[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<ApplicationRequest | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    description: '',
+    url: '',
+    image_url: '',
+    auth_type: 'username_password',
+    departmentIds: [] as string[],
+  });
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -76,16 +96,61 @@ export default function RequestsPage() {
 
   const fetchRequests = async () => {
     try {
-      const response = await fetch('/api/application-requests');
-      if (response.ok) {
-        const data = await response.json();
+      const [requestsRes, deptsRes] = await Promise.all([
+        fetch('/api/application-requests'),
+        fetch('/api/departments'),
+      ]);
+      
+      if (requestsRes.ok) {
+        const data = await requestsRes.json();
         setRequests(data);
+      }
+      
+      if (deptsRes.ok) {
+        const depts = await deptsRes.json();
+        setDepartments(depts);
       }
     } catch (error) {
       console.error('Error fetching requests:', error);
       toast.error('Failed to load requests');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEdit = (request: ApplicationRequest) => {
+    setSelectedRequest(request);
+    setEditForm({
+      name: request.name,
+      description: request.description || '',
+      url: request.url,
+      image_url: request.image_url || '',
+      auth_type: request.auth_type,
+      departmentIds: request.departments.map((d) => d.id),
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedRequest) return;
+
+    try {
+      const response = await fetch(`/api/application-requests/${selectedRequest.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      });
+
+      if (response.ok) {
+        toast.success('Request updated successfully');
+        fetchRequests();
+        setEditDialogOpen(false);
+      } else {
+        throw new Error('Failed to update request');
+      }
+    } catch (error) {
+      console.error('Error updating request:', error);
+      toast.error('Failed to update request');
     }
   };
 
@@ -239,6 +304,14 @@ export default function RequestsPage() {
                       {request.status === 'pending' && (
                         <>
                           <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handleEdit(request)}
+                          >
+                            <Pencil className="mr-1 h-4 w-4" />
+                            Edit
+                          </Button>
+                          <Button
                             variant="default"
                             size="sm"
                             onClick={() => handleApprove(request)}
@@ -360,6 +433,129 @@ export default function RequestsPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Application Request</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Application Name *
+              </label>
+              <Input
+                value={editForm.name}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, name: e.target.value })
+                }
+                placeholder="Enter application name"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Description
+              </label>
+              <Textarea
+                value={editForm.description}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, description: e.target.value })
+                }
+                placeholder="Enter application description"
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">URL *</label>
+              <Input
+                value={editForm.url}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, url: e.target.value })
+                }
+                placeholder="https://example.com"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Authentication Type *
+              </label>
+              <Select
+                value={editForm.auth_type}
+                onValueChange={(value) =>
+                  setEditForm({ ...editForm, auth_type: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select authentication type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sso">SSO</SelectItem>
+                  <SelectItem value="username_password">
+                    Username/Password
+                  </SelectItem>
+                  <SelectItem value="api_key">API Key</SelectItem>
+                  <SelectItem value="oauth">OAuth</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Application Image
+              </label>
+              <ImageUpload
+                value={editForm.image_url}
+                onChange={(url) =>
+                  setEditForm({ ...editForm, image_url: url })
+                }
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Departments
+              </label>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {departments.map((dept) => (
+                  <Button
+                    key={dept.id}
+                    type="button"
+                    variant={
+                      editForm.departmentIds.includes(dept.id)
+                        ? 'default'
+                        : 'outline'
+                    }
+                    size="sm"
+                    onClick={() => {
+                      setEditForm({
+                        ...editForm,
+                        departmentIds: editForm.departmentIds.includes(dept.id)
+                          ? editForm.departmentIds.filter((id) => id !== dept.id)
+                          : [...editForm.departmentIds, dept.id],
+                      });
+                    }}
+                  >
+                    {dept.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setEditDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEdit}>Save Changes</Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

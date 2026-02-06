@@ -17,7 +17,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { status, admin_notes, approve, ...updateData } = body;
+    const { status, admin_notes, approve, departmentIds, ...updateData } = body;
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database not initialized' }, { status: 500 });
@@ -99,6 +99,31 @@ export async function PUT(
     if (error) {
       console.error('Error updating application request:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Update department associations if provided
+    if (departmentIds !== undefined) {
+      // Delete existing associations
+      await supabaseAdmin
+        .from('application_request_departments')
+        .delete()
+        .eq('request_id', id);
+
+      // Add new associations
+      if (Array.isArray(departmentIds) && departmentIds.length > 0) {
+        const associations = departmentIds.map((depId: string) => ({
+          request_id: id,
+          department_id: depId,
+        }));
+
+        const { error: assocError } = await supabaseAdmin
+          .from('application_request_departments')
+          .insert(associations);
+
+        if (assocError) {
+          console.error('Error updating department associations:', assocError);
+        }
+      }
     }
 
     return NextResponse.json(data);
