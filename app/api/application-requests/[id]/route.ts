@@ -6,7 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 // PUT - Update or approve an application request (admin only)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -15,7 +15,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { status, admin_notes, approve, ...updateData } = body;
 
@@ -111,7 +111,7 @@ export async function PUT(
 // DELETE - Delete an application request (admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -120,7 +120,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database not initialized' }, { status: 500 });
