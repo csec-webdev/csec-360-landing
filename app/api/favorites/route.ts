@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { getUserFavorites, addFavorite, removeFavorite } from '@/lib/db-queries';
+import { getUserFavorites, addFavorite, removeFavorite, ensureUserExists } from '@/lib/db-queries';
 
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    const favorites = await getUserFavorites(session.user.id);
+    const userId = await ensureUserExists(session.user.email, session.user.name);
+    const favorites = await getUserFavorites(userId);
     return NextResponse.json(favorites);
   } catch (error) {
     console.error('Error fetching favorites:', error);
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -46,7 +47,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await addFavorite(session.user.id, applicationId);
+    const userId = await ensureUserExists(session.user.email, session.user.name);
+    await addFavorite(userId, applicationId);
     
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -62,7 +64,7 @@ export async function DELETE(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -79,7 +81,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await removeFavorite(session.user.id, applicationId);
+    const userId = await ensureUserExists(session.user.email, session.user.name);
+    await removeFavorite(userId, applicationId);
     
     return NextResponse.json({ success: true });
   } catch (error) {

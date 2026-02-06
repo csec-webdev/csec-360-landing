@@ -24,10 +24,12 @@ import Image from 'next/image';
 export default function HomePage() {
   const { data: session } = useSession();
   const [applications, setApplications] = useState<ApplicationWithDepartments[]>([]);
+  const [myApplications, setMyApplications] = useState<ApplicationWithDepartments[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('all');
+  const [viewMode, setViewMode] = useState<'all' | 'my'>('my');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,10 +38,11 @@ export default function HomePage() {
 
   const fetchData = async () => {
     try {
-      const [appsRes, deptsRes, favsRes] = await Promise.all([
+      const [appsRes, deptsRes, favsRes, myAppsRes] = await Promise.all([
         fetch('/api/applications'),
         fetch('/api/departments'),
         fetch('/api/favorites'),
+        fetch('/api/my-applications'),
       ]);
 
       if (appsRes.ok) {
@@ -55,6 +58,11 @@ export default function HomePage() {
       if (favsRes.ok) {
         const favsData = await favsRes.json();
         setFavorites(favsData);
+      }
+
+      if (myAppsRes.ok) {
+        const myAppsData = await myAppsRes.json();
+        setMyApplications(myAppsData);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -95,8 +103,103 @@ export default function HomePage() {
     }
   };
 
+  const toggleMyApplication = async (appId: string) => {
+    const isInMyApps = myApplications.some((app) => app.id === appId);
+
+    if (isInMyApps) {
+      // Remove from My Applications
+      setMyApplications((prev) => prev.filter((app) => app.id !== appId));
+
+      try {
+        await fetch(`/api/my-applications?applicationId=${appId}`, {
+          method: 'DELETE',
+        });
+        toast.success('Removed from My Applications');
+      } catch (error) {
+        // Revert on error
+        await fetchData();
+        toast.error('Failed to remove from My Applications');
+      }
+    } else {
+      // Add to My Applications
+      const appToAdd = applications.find((app) => app.id === appId);
+      if (appToAdd) {
+        setMyApplications((prev) => [...prev, appToAdd]);
+
+        try {
+          await fetch('/api/my-applications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ applicationId: appId }),
+          });
+          toast.success('Added to My Applications');
+        } catch (error) {
+          // Revert on error
+          setMyApplications((prev) => prev.filter((app) => app.id !== appId));
+          toast.error('Failed to add to My Applications');
+        }
+      }
+    }
+  };
+
+  const reorderMyApplications = async (orderedApps: ApplicationWithDepartments[]) => {
+    const previousOrder = [...myApplications];
+    setMyApplications(orderedApps);
+
+    try {
+      const orderedIds = orderedApps.map((app) => app.id);
+      await fetch('/api/my-applications/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderedApplicationIds: orderedIds }),
+      });
+    } catch (error) {
+      // Revert on error
+      setMyApplications(previousOrder);
+      toast.error('Failed to reorder applications');
+    }
+  };
+
+  // Drag and drop handlers
+  const [draggedAppId, setDraggedAppId] = useState<string | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, appId: string) => {
+    setDraggedAppId(appId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, targetAppId: string) => {
+    e.preventDefault();
+    
+    if (!draggedAppId || draggedAppId === targetAppId) {
+      setDraggedAppId(null);
+      return;
+    }
+
+    const draggedIndex = filteredApplications.findIndex((app) => app.id === draggedAppId);
+    const targetIndex = filteredApplications.findIndex((app) => app.id === targetAppId);
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedAppId(null);
+      return;
+    }
+
+    const newOrder = [...filteredApplications];
+    const [removed] = newOrder.splice(draggedIndex, 1);
+    newOrder.splice(targetIndex, 0, removed);
+
+    reorderMyApplications(newOrder);
+    setDraggedAppId(null);
+  };
+
   const filteredApplications = useMemo(() => {
-    let filtered = applications;
+    // Use myApplications if in "my" view, otherwise use all applications
+    let filtered = viewMode === 'my' ? myApplications : applications;
 
     // Filter by search query
     if (searchQuery) {
@@ -108,23 +211,29 @@ export default function HomePage() {
       );
     }
 
-    // Filter by department
-    if (selectedDepartment !== 'all') {
+    // Filter by department (only in "all" view)
+    if (selectedDepartment !== 'all' && viewMode === 'all') {
       filtered = filtered.filter((app) =>
         app.departments.some((dept) => dept.id === selectedDepartment)
       );
     }
 
-    // Sort: favorites first, then alphabetically
-    return filtered.sort((a, b) => {
-      const aFav = favorites.includes(a.id);
-      const bFav = favorites.includes(b.id);
+    // Sort based on view mode
+    if (viewMode === 'my') {
+      // In "my" view, preserve the custom order
+      return filtered;
+    } else {
+      // In "all" view, sort: favorites first, then alphabetically
+      return filtered.sort((a, b) => {
+        const aFav = favorites.includes(a.id);
+        const bFav = favorites.includes(b.id);
 
-      if (aFav && !bFav) return -1;
-      if (!aFav && bFav) return 1;
-      return a.name.localeCompare(b.name);
-    });
-  }, [applications, searchQuery, selectedDepartment, favorites]);
+        if (aFav && !bFav) return -1;
+        if (!aFav && bFav) return 1;
+        return a.name.localeCompare(b.name);
+      });
+    }
+  }, [applications, myApplications, searchQuery, selectedDepartment, favorites, viewMode]);
 
   if (loading) {
     return (
@@ -150,12 +259,30 @@ export default function HomePage() {
             />
           </div>
           
-          <div className="flex items-center gap-3 flex-1 max-w-2xl">
-            <DepartmentTabs
-              departments={departments}
-              selectedDepartment={selectedDepartment}
-              onDepartmentChange={setSelectedDepartment}
-            />
+          <div className="flex items-center gap-3 flex-1 max-w-3xl">
+            <div className="flex gap-2 shrink-0">
+              <Button
+                variant={viewMode === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('all')}
+              >
+                All Applications
+              </Button>
+              <Button
+                variant={viewMode === 'my' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('my')}
+              >
+                My Applications
+              </Button>
+            </div>
+            {viewMode === 'all' && (
+              <DepartmentTabs
+                departments={departments}
+                selectedDepartment={selectedDepartment}
+                onDepartmentChange={setSelectedDepartment}
+              />
+            )}
             <SearchBar value={searchQuery} onChange={setSearchQuery} />
           </div>
           
@@ -170,15 +297,30 @@ export default function HomePage() {
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2 h-auto py-2 px-3">
-                  <span className="text-sm font-medium">
-                    {session?.user?.name || session?.user?.email}
-                  </span>
+                <Button variant="ghost" className="flex items-center gap-3 h-auto py-2 px-3">
                   <Avatar>
                     <AvatarFallback>
-                      {session?.user?.name?.charAt(0) || session?.user?.email?.charAt(0) || 'U'}
+                      {(() => {
+                        const name = session?.user?.name;
+                        if (name) {
+                          const nameParts = name.split(' ');
+                          if (nameParts.length >= 2) {
+                            return `${nameParts[0].charAt(0)}${nameParts[nameParts.length - 1].charAt(0)}`.toUpperCase();
+                          }
+                          return name.charAt(0).toUpperCase();
+                        }
+                        return session?.user?.email?.charAt(0).toUpperCase() || 'U';
+                      })()}
                     </AvatarFallback>
                   </Avatar>
+                  <div className="flex flex-col items-start">
+                    <span className="text-sm font-medium leading-tight">
+                      {session?.user?.name || session?.user?.email}
+                    </span>
+                    <span className="text-xs text-muted-foreground leading-tight">
+                      {session?.user?.email}
+                    </span>
+                  </div>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -205,9 +347,13 @@ export default function HomePage() {
       <main className="container mx-auto px-4 py-8">
         {filteredApplications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <p className="text-lg text-muted-foreground">No applications found</p>
+            <p className="text-lg text-muted-foreground">
+              {viewMode === 'my' ? 'No applications in your list' : 'No applications found'}
+            </p>
             <p className="text-sm text-muted-foreground">
-              Try adjusting your search or filter
+              {viewMode === 'my' 
+                ? 'Add applications from the "All Applications" view to build your custom list' 
+                : 'Try adjusting your search or filter'}
             </p>
           </div>
         ) : (
@@ -218,6 +364,13 @@ export default function HomePage() {
                 application={app}
                 isFavorited={favorites.includes(app.id)}
                 onToggleFavorite={toggleFavorite}
+                viewMode={viewMode}
+                isInMyApplications={myApplications.some((myApp) => myApp.id === app.id)}
+                onToggleMyApplication={toggleMyApplication}
+                isDraggable={viewMode === 'my'}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
               />
             ))}
           </div>

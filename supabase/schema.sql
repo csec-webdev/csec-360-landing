@@ -43,11 +43,22 @@ CREATE TABLE user_favorites (
   PRIMARY KEY (user_id, application_id)
 );
 
+-- User custom application lists (for "My Applications")
+CREATE TABLE user_application_lists (
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  application_id UUID REFERENCES applications(id) ON DELETE CASCADE,
+  order_index INTEGER NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  PRIMARY KEY (user_id, application_id)
+);
+
 -- Create indexes for better query performance
 CREATE INDEX idx_application_departments_app ON application_departments(application_id);
 CREATE INDEX idx_application_departments_dept ON application_departments(department_id);
 CREATE INDEX idx_user_favorites_user ON user_favorites(user_id);
 CREATE INDEX idx_user_favorites_app ON user_favorites(application_id);
+CREATE INDEX idx_user_application_lists_user ON user_application_lists(user_id);
+CREATE INDEX idx_user_application_lists_app ON user_application_lists(application_id);
 
 -- Enable Row Level Security
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
@@ -55,6 +66,7 @@ ALTER TABLE departments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE applications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE application_departments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_favorites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_application_lists ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for users table
 CREATE POLICY "Users can view all users" ON users FOR SELECT USING (true);
@@ -76,6 +88,12 @@ CREATE POLICY "Service role can manage application departments" ON application_d
 CREATE POLICY "Users can view their own favorites" ON user_favorites FOR SELECT USING (true);
 CREATE POLICY "Users can insert their own favorites" ON user_favorites FOR INSERT WITH CHECK (true);
 CREATE POLICY "Users can delete their own favorites" ON user_favorites FOR DELETE USING (true);
+
+-- RLS Policies for user_application_lists table
+CREATE POLICY "Users can view their own application lists" ON user_application_lists FOR SELECT USING (true);
+CREATE POLICY "Users can insert their own application lists" ON user_application_lists FOR INSERT WITH CHECK (true);
+CREATE POLICY "Users can update their own application lists" ON user_application_lists FOR UPDATE USING (true);
+CREATE POLICY "Users can delete their own application lists" ON user_application_lists FOR DELETE USING (true);
 
 -- Function to automatically update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()

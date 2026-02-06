@@ -27,11 +27,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, MoreHorizontal, Pencil, Trash2, Search } from 'lucide-react';
+import { Plus, MoreHorizontal, Pencil, Trash2, Search, List } from 'lucide-react';
 import { ApplicationDialog } from '@/components/application-dialog';
 import { ApplicationWithDepartments, Department } from '@/types';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const getAuthLabel = (authType: string) => {
   switch (authType) {
@@ -57,6 +63,8 @@ export default function ApplicationsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [appToDelete, setAppToDelete] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [departmentsDialogOpen, setDepartmentsDialogOpen] = useState(false);
+  const [selectedAppDepartments, setSelectedAppDepartments] = useState<Department[]>([]);
 
   useEffect(() => {
     fetchData();
@@ -122,6 +130,11 @@ export default function ApplicationsPage() {
     }
   };
 
+  const handleShowDepartments = (departments: Department[]) => {
+    setSelectedAppDepartments(departments);
+    setDepartmentsDialogOpen(true);
+  };
+
   const filteredApplications = applications.filter((app) =>
     app.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -171,26 +184,39 @@ export default function ApplicationsPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredApplications.map((app) => (
-                <TableRow key={app.id}>
+              filteredApplications.map((app, index) => (
+                <TableRow 
+                  key={app.id}
+                  className={index % 2 === 0 ? "bg-background hover:bg-muted/50 cursor-pointer" : "bg-muted/30 hover:bg-muted/50 cursor-pointer"}
+                  onClick={() => handleEdit(app)}
+                >
                   <TableCell className="font-medium">{app.name}</TableCell>
                   <TableCell className="max-w-xs truncate">{app.url}</TableCell>
                   <TableCell>
                     {getAuthLabel(app.auth_type)}
                   </TableCell>
                   <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {app.departments.map((dept) => (
-                        <Badge key={dept.id} variant="secondary">
-                          {dept.name}
-                        </Badge>
-                      ))}
-                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleShowDepartments(app.departments);
+                      }}
+                      className="h-8"
+                    >
+                      <List className="mr-2 h-4 w-4" />
+                      Departments ({app.departments.length})
+                    </Button>
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -238,6 +264,29 @@ export default function ApplicationsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={departmentsDialogOpen} onOpenChange={setDepartmentsDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Departments</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 mt-4">
+            {selectedAppDepartments.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No departments assigned
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {selectedAppDepartments.map((dept) => (
+                  <Badge key={dept.id} variant="secondary" className="text-sm">
+                    {dept.name}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
