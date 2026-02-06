@@ -2,7 +2,7 @@ import { supabase, supabaseAdmin } from './supabase';
 import { Application, Department, ApplicationWithDepartments } from '@/types';
 
 // User Management
-export async function ensureUserExists(email: string, name?: string): Promise<string> {
+export async function ensureUserExists(email: string, name?: string | null): Promise<string> {
   if (!supabase) throw new Error('Supabase client not initialized');
   
   // Try to find existing user by email
@@ -19,7 +19,7 @@ export async function ensureUserExists(email: string, name?: string): Promise<st
   // User doesn't exist, create new user
   const { data: newUser, error: insertError } = await supabase
     .from('users')
-    .insert({ email, name })
+    .insert({ email, name: name || undefined })
     .select('id')
     .single();
 
