@@ -35,7 +35,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Check, X, MoreHorizontal, Eye, Pencil } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -72,7 +72,6 @@ export default function RequestsPage() {
   const [departments, setDepartments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<ApplicationRequest | null>(null);
   const [editForm, setEditForm] = useState({
@@ -151,6 +150,41 @@ export default function RequestsPage() {
     } catch (error) {
       console.error('Error updating request:', error);
       toast.error('Failed to update request');
+    }
+  };
+
+  const handleSaveAndApprove = async () => {
+    if (!selectedRequest) return;
+
+    try {
+      // First update the request
+      const updateResponse = await fetch(`/api/application-requests/${selectedRequest.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      });
+
+      if (!updateResponse.ok) {
+        throw new Error('Failed to update request');
+      }
+
+      // Then approve it
+      const approveResponse = await fetch(`/api/application-requests/${selectedRequest.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approve: true }),
+      });
+
+      if (approveResponse.ok) {
+        toast.success('Application approved and added!');
+        fetchRequests();
+        setEditDialogOpen(false);
+      } else {
+        throw new Error('Failed to approve request');
+      }
+    } catch (error) {
+      console.error('Error saving and approving request:', error);
+      toast.error('Failed to save and approve request');
     }
   };
 
@@ -272,7 +306,8 @@ export default function RequestsPage() {
               {requests.map((request, index) => (
                 <TableRow
                   key={request.id}
-                  className={index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}
+                  className={index % 2 === 0 ? 'bg-background hover:bg-muted/50 cursor-pointer' : 'bg-muted/30 hover:bg-muted/50 cursor-pointer'}
+                  onClick={() => handleEdit(request)}
                 >
                   <TableCell className="font-medium">{request.name}</TableCell>
                   <TableCell>
@@ -304,17 +339,12 @@ export default function RequestsPage() {
                       {request.status === 'pending' && (
                         <>
                           <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => handleEdit(request)}
-                          >
-                            <Pencil className="mr-1 h-4 w-4" />
-                            Edit
-                          </Button>
-                          <Button
                             variant="default"
                             size="sm"
-                            onClick={() => handleApprove(request)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleApprove(request);
+                            }}
                           >
                             <Check className="mr-1 h-4 w-4" />
                             Approve
@@ -322,7 +352,8 @@ export default function RequestsPage() {
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setSelectedRequest(request);
                               setDeleteDialogOpen(true);
                             }}
@@ -332,16 +363,6 @@ export default function RequestsPage() {
                           </Button>
                         </>
                       )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedRequest(request);
-                          setViewDialogOpen(true);
-                        }}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -367,74 +388,6 @@ export default function RequestsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Application Request Details</DialogTitle>
-          </DialogHeader>
-          {selectedRequest && (
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold">Application Name</h3>
-                <p>{selectedRequest.name}</p>
-              </div>
-              <div>
-                <h3 className="font-semibold">Description</h3>
-                <p>{selectedRequest.description || 'No description provided'}</p>
-              </div>
-              <div>
-                <h3 className="font-semibold">URL</h3>
-                <a
-                  href={selectedRequest.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-500 hover:underline"
-                >
-                  {selectedRequest.url}
-                </a>
-              </div>
-              <div>
-                <h3 className="font-semibold">Authentication Type</h3>
-                <p>{getAuthLabel(selectedRequest.auth_type)}</p>
-              </div>
-              <div>
-                <h3 className="font-semibold">Departments</h3>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {selectedRequest.departments.map((dept) => (
-                    <Badge key={dept.id} variant="secondary">
-                      {dept.name}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-              {selectedRequest.image_url && (
-                <div>
-                  <h3 className="font-semibold">Image</h3>
-                  <img
-                    src={selectedRequest.image_url}
-                    alt={selectedRequest.name}
-                    className="mt-2 max-w-xs max-h-32 object-contain"
-                  />
-                </div>
-              )}
-              <div>
-                <h3 className="font-semibold">Requested By</h3>
-                <p>
-                  {selectedRequest.requestedBy?.name || 'Unknown'} (
-                  {selectedRequest.requestedBy?.email})
-                </p>
-              </div>
-              <div>
-                <h3 className="font-semibold">Status</h3>
-                <Badge className={getStatusColor(selectedRequest.status)}>
-                  {selectedRequest.status}
-                </Badge>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -553,7 +506,12 @@ export default function RequestsPage() {
               >
                 Cancel
               </Button>
-              <Button onClick={handleSaveEdit}>Save Changes</Button>
+              <Button variant="secondary" onClick={handleSaveEdit}>
+                Save Changes
+              </Button>
+              <Button onClick={handleSaveAndApprove}>
+                Save and Approve
+              </Button>
             </div>
           </div>
         </DialogContent>
