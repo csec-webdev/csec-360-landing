@@ -20,6 +20,21 @@ import { ApplicationWithDepartments, Department } from '@/types';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import Image from 'next/image';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
 
 export default function HomePage() {
   const { data: session } = useSession();
@@ -160,41 +175,26 @@ export default function HomePage() {
     }
   };
 
-  // Drag and drop handlers
-  const [draggedAppId, setDraggedAppId] = useState<string | null>(null);
+  // @dnd-kit sensors for drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
-  const handleDragStart = (e: React.DragEvent, appId: string) => {
-    setDraggedAppId(appId);
-    e.dataTransfer.effectAllowed = 'move';
-  };
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
+    if (over && active.id !== over.id) {
+      const oldIndex = filteredApplications.findIndex((app) => app.id === active.id);
+      const newIndex = filteredApplications.findIndex((app) => app.id === over.id);
 
-  const handleDrop = (e: React.DragEvent, targetAppId: string) => {
-    e.preventDefault();
-    
-    if (!draggedAppId || draggedAppId === targetAppId) {
-      setDraggedAppId(null);
-      return;
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newOrder = arrayMove(filteredApplications, oldIndex, newIndex);
+        reorderMyApplications(newOrder);
+      }
     }
-
-    const draggedIndex = filteredApplications.findIndex((app) => app.id === draggedAppId);
-    const targetIndex = filteredApplications.findIndex((app) => app.id === targetAppId);
-
-    if (draggedIndex === -1 || targetIndex === -1) {
-      setDraggedAppId(null);
-      return;
-    }
-
-    const newOrder = [...filteredApplications];
-    const [removed] = newOrder.splice(draggedIndex, 1);
-    newOrder.splice(targetIndex, 0, removed);
-
-    reorderMyApplications(newOrder);
-    setDraggedAppId(null);
   };
 
   const filteredApplications = useMemo(() => {
@@ -356,6 +356,32 @@ export default function HomePage() {
                 : 'Try adjusting your search or filter'}
             </p>
           </div>
+        ) : viewMode === 'my' ? (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={filteredApplications.map((app) => app.id)}
+              strategy={rectSortingStrategy}
+            >
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {filteredApplications.map((app) => (
+                  <AppCard
+                    key={app.id}
+                    application={app}
+                    isFavorited={favorites.includes(app.id)}
+                    onToggleFavorite={toggleFavorite}
+                    viewMode={viewMode}
+                    isInMyApplications={myApplications.some((myApp) => myApp.id === app.id)}
+                    onToggleMyApplication={toggleMyApplication}
+                    isDraggable={viewMode === 'my'}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredApplications.map((app) => (
@@ -367,10 +393,7 @@ export default function HomePage() {
                 viewMode={viewMode}
                 isInMyApplications={myApplications.some((myApp) => myApp.id === app.id)}
                 onToggleMyApplication={toggleMyApplication}
-                isDraggable={viewMode === 'my'}
-                onDragStart={handleDragStart}
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}
+                isDraggable={false}
               />
             ))}
           </div>

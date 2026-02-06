@@ -13,6 +13,8 @@ import {
 import { ApplicationWithDepartments } from '@/types';
 import { cn } from '@/lib/utils';
 import { useRef, useEffect, useState } from 'react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const DEFAULT_APP_IMAGE = 'https://zgjvwacyowlsznpgmwdz.supabase.co/storage/v1/object/public/application-images/1769205453192-6gghs.svg';
 
@@ -24,9 +26,6 @@ interface AppCardProps {
   isInMyApplications?: boolean;
   onToggleMyApplication?: (appId: string) => void;
   isDraggable?: boolean;
-  onDragStart?: (e: React.DragEvent, appId: string) => void;
-  onDragOver?: (e: React.DragEvent) => void;
-  onDrop?: (e: React.DragEvent, appId: string) => void;
 }
 
 const getAuthIcon = (authType: string) => {
@@ -65,12 +64,26 @@ export function AppCard({
   isInMyApplications = false,
   onToggleMyApplication,
   isDraggable = false,
-  onDragStart,
-  onDragOver,
-  onDrop,
 }: AppCardProps) {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [isTruncated, setIsTruncated] = useState(false);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ 
+    id: application.id,
+    disabled: !isDraggable,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
 
   useEffect(() => {
     const element = titleRef.current;
@@ -90,15 +103,16 @@ export function AppCard({
 
   return (
     <Card 
+      ref={setNodeRef}
+      style={style}
       className={cn(
         "group relative overflow-hidden transition-all hover:shadow-lg p-0 flex flex-col h-full",
-        isDraggable && "cursor-move",
-        viewMode === 'all' && isInMyApplications && "border-2 border-[#C8102E]"
+        isDraggable && "cursor-move touch-none",
+        viewMode === 'all' && isInMyApplications && "border-2 border-[#C8102E]",
+        isDragging && "opacity-50 z-50"
       )}
-      draggable={isDraggable}
-      onDragStart={(e) => onDragStart?.(e, application.id)}
-      onDragOver={(e) => onDragOver?.(e)}
-      onDrop={(e) => onDrop?.(e, application.id)}
+      {...attributes}
+      {...listeners}
     >
       {/* Image Row */}
       <div className="px-4 mt-3">
@@ -139,8 +153,10 @@ export function AppCard({
             size="icon"
             onClick={(e) => {
               e.preventDefault();
+              e.stopPropagation();
               onToggleFavorite(application.id);
             }}
+            onPointerDown={(e) => e.stopPropagation()}
             className="shrink-0 h-7 w-7 -mt-1"
           >
             <Star
@@ -158,7 +174,11 @@ export function AppCard({
         </p>
 
         {/* Buttons - Always at bottom */}
-        <div className="mt-auto space-y-2">
+        <div 
+          className="mt-auto space-y-2"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
           <Button
             variant="default"
             className="w-full h-9"
