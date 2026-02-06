@@ -92,7 +92,8 @@ export function AppCard({
     <Card 
       className={cn(
         "group relative overflow-hidden transition-all hover:shadow-lg p-0 flex flex-col h-full",
-        isDraggable && "cursor-move"
+        isDraggable && "cursor-move",
+        viewMode === 'all' && isInMyApplications && "border-2 border-[#C8102E]"
       )}
       draggable={isDraggable}
       onDragStart={(e) => onDragStart?.(e, application.id)}
