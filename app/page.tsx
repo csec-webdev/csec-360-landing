@@ -170,7 +170,10 @@ export default function HomePage() {
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full">
+                <Button variant="ghost" className="flex items-center gap-2 h-auto py-2 px-3">
+                  <span className="text-sm font-medium">
+                    {session?.user?.name || session?.user?.email}
+                  </span>
                   <Avatar>
                     <AvatarFallback>
                       {session?.user?.name?.charAt(0) || session?.user?.email?.charAt(0) || 'U'}

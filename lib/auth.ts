@@ -46,6 +46,7 @@ export const authOptions: NextAuthOptions = {
           console.log('[Auth] JWT callback - Profile:', JSON.stringify(profile, null, 2));
           token.id = profile.sub || '';
           token.email = profile.email || '';
+          token.name = profile.name || '';
           // Check if user is admin via Azure AD groups
           // This can be customized based on your Azure AD setup
           token.isAdmin = await checkIfUserIsAdmin((profile.email as string) || '');
@@ -57,6 +58,7 @@ export const authOptions: NextAuthOptions = {
         if (account && profile) {
           token.id = profile.sub || '';
           token.email = profile.email || '';
+          token.name = profile.name || '';
           token.isAdmin = false;
         }
       }
@@ -67,6 +69,7 @@ export const authOptions: NextAuthOptions = {
         if (session.user) {
           session.user.id = (token.id as string) || '';
           session.user.email = (token.email as string) || '';
+          session.user.name = (token.name as string) || '';
           session.user.isAdmin = (token.isAdmin as boolean) || false;
           console.log('[Auth] Session created for:', session.user.email);
         }
