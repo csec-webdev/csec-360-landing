@@ -15,6 +15,10 @@ export async function GET() {
 
     const userId = await ensureUserExists(session.user.email, session.user.name);
 
+    if (!supabase) {
+      return NextResponse.json({ error: 'Database not initialized' }, { status: 500 });
+    }
+
     const { data, error } = await supabase
       .from('user_application_lists')
       .select(`
@@ -86,6 +90,10 @@ export async function POST(request: NextRequest) {
 
     const userId = await ensureUserExists(session.user.email, session.user.name);
 
+    if (!supabase) {
+      return NextResponse.json({ error: 'Database not initialized' }, { status: 500 });
+    }
+
     // Get the current max order_index for this user
     const { data: maxOrderData } = await supabase
       .from('user_application_lists')
@@ -135,6 +143,10 @@ export async function DELETE(request: NextRequest) {
     }
 
     const userId = await ensureUserExists(session.user.email, session.user.name);
+
+    if (!supabase) {
+      return NextResponse.json({ error: 'Database not initialized' }, { status: 500 });
+    }
 
     const { error } = await supabase
       .from('user_application_lists')

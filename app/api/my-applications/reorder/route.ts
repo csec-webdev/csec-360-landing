@@ -21,6 +21,10 @@ export async function PUT(request: NextRequest) {
 
     const userId = await ensureUserExists(session.user.email, session.user.name);
 
+    if (!supabase) {
+      return NextResponse.json({ error: 'Database not initialized' }, { status: 500 });
+    }
+
     // Update each application's order_index
     const updates = orderedApplicationIds.map((appId, index) => 
       supabase
