@@ -19,7 +19,10 @@ export async function GET() {
       return NextResponse.json({ error: 'Database not initialized' }, { status: 500 });
     }
 
-    const { data, error } = await supabase
+    // Store supabase in a const to help TypeScript with type narrowing
+    const db = supabase;
+
+    const { data, error } = await db
       .from('user_application_lists')
       .select(`
         application_id,
@@ -47,7 +50,7 @@ export async function GET() {
         const app = item.applications;
         
         // Fetch departments for each application
-        const { data: deptData } = await supabase
+        const { data: deptData } = await db
           .from('application_departments')
           .select(`
             departments (
@@ -94,8 +97,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Database not initialized' }, { status: 500 });
     }
 
+    // Store supabase in a const to help TypeScript with type narrowing
+    const db = supabase;
+
     // Get the current max order_index for this user
-    const { data: maxOrderData } = await supabase
+    const { data: maxOrderData } = await db
       .from('user_application_lists')
       .select('order_index')
       .eq('user_id', userId)
@@ -106,7 +112,7 @@ export async function POST(request: NextRequest) {
     const newOrderIndex = maxOrderData ? maxOrderData.order_index + 1 : 0;
 
     // Insert the new application
-    const { error } = await supabase
+    const { error } = await db
       .from('user_application_lists')
       .insert({
         user_id: userId,
@@ -148,7 +154,10 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Database not initialized' }, { status: 500 });
     }
 
-    const { error } = await supabase
+    // Store supabase in a const to help TypeScript with type narrowing
+    const db = supabase;
+
+    const { error } = await db
       .from('user_application_lists')
       .delete()
       .eq('user_id', userId)

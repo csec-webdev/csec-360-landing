@@ -25,9 +25,12 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Database not initialized' }, { status: 500 });
     }
 
+    // Store supabase in a const to help TypeScript with type narrowing
+    const db = supabase;
+
     // Update each application's order_index
     const updates = orderedApplicationIds.map((appId, index) => 
-      supabase
+      db
         .from('user_application_lists')
         .update({ order_index: index })
         .eq('user_id', userId)
