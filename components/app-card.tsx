@@ -13,8 +13,10 @@ import {
 import { ApplicationWithDepartments } from '@/types';
 import { cn } from '@/lib/utils';
 import { useRef, useEffect, useState } from 'react';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
+import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine';
+import { setCustomNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview';
+import { pointerOutsideOfPreview } from '@atlaskit/pragmatic-drag-and-drop/element/pointer-outside-of-preview';
 
 const DEFAULT_APP_IMAGE = 'https://zgjvwacyowlsznpgmwdz.supabase.co/storage/v1/object/public/application-images/1769205453192-6gghs.svg';
 
@@ -66,24 +68,10 @@ export function AppCard({
   isDraggable = false,
 }: AppCardProps) {
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const [isTruncated, setIsTruncated] = useState(false);
-
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ 
-    id: application.id,
-    disabled: !isDraggable,
-  });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
+  const [isDragging, setIsDragging] = useState(false);
+  const [isOver, setIsOver] = useState(false);
 
   useEffect(() => {
     const element = titleRef.current;
@@ -91,6 +79,41 @@ export function AppCard({
       setIsTruncated(element.scrollWidth > element.clientWidth);
     }
   }, [application.name]);
+
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el || !isDraggable) return;
+
+    return combine(
+      draggable({
+        element: el,
+        getInitialData: () => ({ id: application.id }),
+        onDragStart: () => setIsDragging(true),
+        onDrop: () => setIsDragging(false),
+        onGenerateDragPreview({ nativeSetDragImage }) {
+          setCustomNativeDragPreview({
+            nativeSetDragImage,
+            getOffset: pointerOutsideOfPreview({
+              x: '16px',
+              y: '8px',
+            }),
+            render({ container }) {
+              const preview = el.cloneNode(true) as HTMLElement;
+              preview.style.width = `${el.offsetWidth}px`;
+              container.appendChild(preview);
+            },
+          });
+        },
+      }),
+      dropTargetForElements({
+        element: el,
+        getData: () => ({ id: application.id }),
+        onDragEnter: () => setIsOver(true),
+        onDragLeave: () => setIsOver(false),
+        onDrop: () => setIsOver(false),
+      })
+    );
+  }, [application.id, isDraggable]);
 
   const titleElement = (
     <h3 
@@ -103,16 +126,14 @@ export function AppCard({
 
   return (
     <Card 
-      ref={setNodeRef}
-      style={style}
+      ref={cardRef}
       className={cn(
         "group relative overflow-hidden transition-all hover:shadow-lg p-0 flex flex-col h-full",
-        isDraggable && "cursor-move touch-none",
+        isDraggable && "cursor-move",
         viewMode === 'all' && isInMyApplications && "border-2 border-[#C8102E]",
-        isDragging && "opacity-50 z-50"
+        isDragging && "opacity-40",
+        isOver && "ring-2 ring-primary ring-offset-2"
       )}
-      {...attributes}
-      {...listeners}
     >
       {/* Image Row */}
       <div className="px-4 mt-3">
@@ -153,10 +174,8 @@ export function AppCard({
             size="icon"
             onClick={(e) => {
               e.preventDefault();
-              e.stopPropagation();
               onToggleFavorite(application.id);
             }}
-            onPointerDown={(e) => e.stopPropagation()}
             className="shrink-0 h-7 w-7 -mt-1"
           >
             <Star
@@ -174,11 +193,7 @@ export function AppCard({
         </p>
 
         {/* Buttons - Always at bottom */}
-        <div 
-          className="mt-auto space-y-2"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div className="mt-auto space-y-2">
           <Button
             variant="default"
             className="w-full h-9"

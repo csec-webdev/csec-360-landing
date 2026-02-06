@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { LogOut, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,21 +20,7 @@ import { ApplicationWithDepartments, Department } from '@/types';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import Image from 'next/image';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  rectSortingStrategy,
-} from '@dnd-kit/sortable';
+import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 
 export default function HomePage() {
   const { data: session } = useSession();
@@ -175,28 +161,6 @@ export default function HomePage() {
     }
   };
 
-  // @dnd-kit sensors for drag and drop
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      const oldIndex = filteredApplications.findIndex((app) => app.id === active.id);
-      const newIndex = filteredApplications.findIndex((app) => app.id === over.id);
-
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const newOrder = arrayMove(filteredApplications, oldIndex, newIndex);
-        reorderMyApplications(newOrder);
-      }
-    }
-  };
-
   const filteredApplications = useMemo(() => {
     // Use myApplications if in "my" view, otherwise use all applications
     let filtered = viewMode === 'my' ? myApplications : applications;
@@ -234,6 +198,34 @@ export default function HomePage() {
       });
     }
   }, [applications, myApplications, searchQuery, selectedDepartment, favorites, viewMode]);
+
+  // Pragmatic drag and drop monitor
+  useEffect(() => {
+    if (viewMode !== 'my') return;
+
+    return monitorForElements({
+      onDrop({ source, location }) {
+        const destination = location.current.dropTargets[0];
+        if (!destination) return;
+
+        const sourceId = source.data.id as string;
+        const destinationId = destination.data.id as string;
+
+        if (sourceId === destinationId) return;
+
+        const sourceIndex = filteredApplications.findIndex((app) => app.id === sourceId);
+        const destinationIndex = filteredApplications.findIndex((app) => app.id === destinationId);
+
+        if (sourceIndex === -1 || destinationIndex === -1) return;
+
+        const newOrder = [...filteredApplications];
+        const [removed] = newOrder.splice(sourceIndex, 1);
+        newOrder.splice(destinationIndex, 0, removed);
+
+        reorderMyApplications(newOrder);
+      },
+    });
+  }, [viewMode, filteredApplications]);
 
   if (loading) {
     return (
@@ -356,32 +348,6 @@ export default function HomePage() {
                 : 'Try adjusting your search or filter'}
             </p>
           </div>
-        ) : viewMode === 'my' ? (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={filteredApplications.map((app) => app.id)}
-              strategy={rectSortingStrategy}
-            >
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {filteredApplications.map((app) => (
-                  <AppCard
-                    key={app.id}
-                    application={app}
-                    isFavorited={favorites.includes(app.id)}
-                    onToggleFavorite={toggleFavorite}
-                    viewMode={viewMode}
-                    isInMyApplications={myApplications.some((myApp) => myApp.id === app.id)}
-                    onToggleMyApplication={toggleMyApplication}
-                    isDraggable={viewMode === 'my'}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredApplications.map((app) => (
@@ -393,7 +359,7 @@ export default function HomePage() {
                 viewMode={viewMode}
                 isInMyApplications={myApplications.some((myApp) => myApp.id === app.id)}
                 onToggleMyApplication={toggleMyApplication}
-                isDraggable={false}
+                isDraggable={viewMode === 'my'}
               />
             ))}
           </div>
