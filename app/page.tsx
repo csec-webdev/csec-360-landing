@@ -39,6 +39,12 @@ export default function HomePage() {
 
   useEffect(() => {
     fetchData();
+    
+    // Load saved display preference from localStorage
+    const savedDisplayType = localStorage.getItem('myAppsDisplayType');
+    if (savedDisplayType && (savedDisplayType === 'card' || savedDisplayType === 'thumbnail' || savedDisplayType === 'list')) {
+      setDisplayType(savedDisplayType as 'card' | 'thumbnail' | 'list');
+    }
   }, []);
 
   // Reset to card view when switching to "All Applications"
@@ -47,6 +53,13 @@ export default function HomePage() {
       setDisplayType('card');
     }
   }, [viewMode]);
+
+  // Save display preference to localStorage when it changes (only for My Applications)
+  useEffect(() => {
+    if (viewMode === 'my') {
+      localStorage.setItem('myAppsDisplayType', displayType);
+    }
+  }, [displayType, viewMode]);
 
   const fetchData = async () => {
     try {
