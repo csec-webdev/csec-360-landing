@@ -27,7 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, MoreHorizontal, Pencil, Trash2, Search, List } from 'lucide-react';
+import { Plus, MoreHorizontal, Pencil, Trash2, Search, List, Download } from 'lucide-react';
 import { ApplicationDialog } from '@/components/application-dialog';
 import { ApplicationWithDepartments, Department } from '@/types';
 import { toast } from 'sonner';
@@ -135,6 +135,48 @@ export default function ApplicationsPage() {
     setDepartmentsDialogOpen(true);
   };
 
+  const exportToCSV = () => {
+    // CSV Headers
+    const headers = ['Name', 'Description', 'URL', 'Auth Type', 'Image URL', 'Departments'];
+    
+    // Convert applications to CSV rows
+    const rows = applications.map(app => [
+      app.name,
+      app.description || '',
+      app.url,
+      getAuthLabel(app.auth_type),
+      app.image_url || '',
+      app.departments.map(dept => dept.name).join('; ')
+    ]);
+    
+    // Escape fields that contain commas, quotes, or newlines
+    const escapeCSVField = (field: string) => {
+      if (field.includes(',') || field.includes('"') || field.includes('\n')) {
+        return `"${field.replace(/"/g, '""')}"`;
+      }
+      return field;
+    };
+    
+    // Build CSV content
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(escapeCSVField).join(','))
+    ].join('\n');
+    
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `applications_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success('Applications exported to CSV');
+  };
+
   const filteredApplications = applications.filter((app) =>
     app.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -147,10 +189,16 @@ export default function ApplicationsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Applications</h1>
-        <Button onClick={handleCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Application
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={exportToCSV}>
+            <Download className="mr-2 h-4 w-4" />
+            Export to CSV
+          </Button>
+          <Button onClick={handleCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Application
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center gap-2">
