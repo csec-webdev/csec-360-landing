@@ -6,7 +6,6 @@ import { useRef, useEffect, useState } from 'react';
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine';
 import { setCustomNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview';
-import { pointerOutsideOfPreview } from '@atlaskit/pragmatic-drag-and-drop/element/pointer-outside-of-preview';
 import { GripVertical } from 'lucide-react';
 
 const DEFAULT_APP_IMAGE = 'https://zgjvwacyowlsznpgmwdz.supabase.co/storage/v1/object/public/application-images/1769205453192-6gghs.svg';
@@ -35,13 +34,17 @@ export function AppThumbnail({
       draggable({
         element: handle,
         getInitialData: () => ({ id: application.id }),
-        onGenerateDragPreview: ({ nativeSetDragImage }) => {
+        onGenerateDragPreview: ({ nativeSetDragImage, location }) => {
           setCustomNativeDragPreview({
             nativeSetDragImage,
-            getOffset: pointerOutsideOfPreview({
-              x: '16px',
-              y: '16px',
-            }),
+            getOffset: () => {
+              const elRect = el.getBoundingClientRect();
+              const handleRect = handle.getBoundingClientRect();
+              return {
+                x: location.current.input.clientX - elRect.left,
+                y: location.current.input.clientY - elRect.top,
+              };
+            },
             render({ container }) {
               // Clone the entire card for the preview
               const clone = el.cloneNode(true) as HTMLElement;
