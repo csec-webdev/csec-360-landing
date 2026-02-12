@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { LogOut, Settings, Plus, Grid3x3, LayoutGrid, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { SearchBar } from '@/components/search-bar';
 import { DepartmentTabs } from '@/components/department-tabs';
 import { AppCard } from '@/components/app-card';
@@ -237,15 +238,31 @@ export default function HomePage() {
                 variant={viewMode === 'my' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setViewMode('my')}
+                className="flex items-center gap-2"
               >
-                My Applications ({myApplications.length})
+                My Applications
+                <span className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-semibold ${
+                  viewMode === 'my' 
+                    ? 'bg-background text-foreground' 
+                    : 'bg-foreground text-background'
+                }`}>
+                  {myApplications.length}
+                </span>
               </Button>
               <Button
                 variant={viewMode === 'all' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setViewMode('all')}
+                className="flex items-center gap-2"
               >
-                All Applications ({applications.length})
+                All Applications
+                <span className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-semibold ${
+                  viewMode === 'all' 
+                    ? 'bg-background text-foreground' 
+                    : 'bg-foreground text-background'
+                }`}>
+                  {applications.length}
+                </span>
               </Button>
             </div>
             {viewMode === 'all' && (
