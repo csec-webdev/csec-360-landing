@@ -238,14 +238,14 @@ export default function HomePage() {
                 size="sm"
                 onClick={() => setViewMode('my')}
               >
-                My Applications
+                My Applications ({myApplications.length})
               </Button>
               <Button
                 variant={viewMode === 'all' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setViewMode('all')}
               >
-                All Applications
+                All Applications ({applications.length})
               </Button>
             </div>
             {viewMode === 'all' && (
