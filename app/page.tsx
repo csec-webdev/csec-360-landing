@@ -2,11 +2,13 @@
 
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useSession, signOut } from 'next-auth/react';
-import { LogOut, Settings, Plus } from 'lucide-react';
+import { LogOut, Settings, Plus, Grid3x3, LayoutGrid, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SearchBar } from '@/components/search-bar';
 import { DepartmentTabs } from '@/components/department-tabs';
 import { AppCard } from '@/components/app-card';
+import { AppThumbnail } from '@/components/app-thumbnail';
+import { AppListRow } from '@/components/app-list-row';
 import { RequestApplicationDialog } from '@/components/request-application-dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -31,6 +33,7 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [viewMode, setViewMode] = useState<'all' | 'my'>('my');
+  const [displayType, setDisplayType] = useState<'card' | 'thumbnail' | 'list'>('card');
   const [loading, setLoading] = useState(true);
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
 
@@ -236,6 +239,35 @@ export default function HomePage() {
           </div>
           
           <div className="flex items-center gap-2">
+            <div className="flex gap-1 border rounded-md p-1">
+              <Button
+                variant={displayType === 'card' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => setDisplayType('card')}
+                title="Card View"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={displayType === 'thumbnail' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => setDisplayType('thumbnail')}
+                title="Thumbnail View"
+              >
+                <Grid3x3 className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={displayType === 'list' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => setDisplayType('list')}
+                title="List View"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
             <Button
               variant="default"
               size="sm"
@@ -312,6 +344,26 @@ export default function HomePage() {
                 ? 'Add applications from the "All Applications" view to build your custom list' 
                 : 'Try adjusting your search or filter'}
             </p>
+          </div>
+        ) : displayType === 'thumbnail' ? (
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+            {filteredApplications.map((app) => (
+              <AppThumbnail
+                key={app.id}
+                application={app}
+                isDraggable={viewMode === 'my'}
+              />
+            ))}
+          </div>
+        ) : displayType === 'list' ? (
+          <div className="space-y-2">
+            {filteredApplications.map((app) => (
+              <AppListRow
+                key={app.id}
+                application={app}
+                isDraggable={viewMode === 'my'}
+              />
+            ))}
           </div>
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
