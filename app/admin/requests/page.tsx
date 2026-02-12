@@ -230,6 +230,14 @@ export default function RequestsPage() {
     }
   };
 
+  const selectAllDepartments = () => {
+    if (editForm.departmentIds.length === departments.length) {
+      setEditForm({ ...editForm, departmentIds: [] });
+    } else {
+      setEditForm({ ...editForm, departmentIds: departments.map((d) => d.id) });
+    }
+  };
+
   const getAuthLabel = (authType: string) => {
     switch (authType) {
       case 'sso':
@@ -474,6 +482,14 @@ export default function RequestsPage() {
                 Departments
               </label>
               <div className="flex flex-wrap gap-2 mt-2">
+                <Button
+                  type="button"
+                  variant={editForm.departmentIds.length === departments.length ? 'default' : 'secondary'}
+                  size="sm"
+                  onClick={selectAllDepartments}
+                >
+                  Select All
+                </Button>
                 {departments.map((dept) => (
                   <Button
                     key={dept.id}

@@ -79,6 +79,16 @@ export function ApplicationDialog({
     );
   };
 
+  const selectAllDepartments = () => {
+    if (selectedDepartments.length === departments.length) {
+      // If all are selected, deselect all
+      setSelectedDepartments([]);
+    } else {
+      // Otherwise, select all
+      setSelectedDepartments(departments.map((d) => d.id));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -191,6 +201,13 @@ export function ApplicationDialog({
           <div className="space-y-2">
             <Label>Departments</Label>
             <div className="flex flex-wrap gap-2">
+              <Badge
+                variant={selectedDepartments.length === departments.length ? 'default' : 'secondary'}
+                className="cursor-pointer"
+                onClick={selectAllDepartments}
+              >
+                Select All
+              </Badge>
               {departments.map((dept) => (
                 <Badge
                   key={dept.id}

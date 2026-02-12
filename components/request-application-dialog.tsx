@@ -111,6 +111,14 @@ export function RequestApplicationDialog({
     );
   };
 
+  const selectAllDepartments = () => {
+    if (selectedDepartments.length === departments.length) {
+      setSelectedDepartments([]);
+    } else {
+      setSelectedDepartments(departments.map((d) => d.id));
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -219,6 +227,14 @@ export function RequestApplicationDialog({
                 Select the departments this application should be visible to
               </FormDescription>
               <div className="flex flex-wrap gap-2 mt-2">
+                <Button
+                  type="button"
+                  variant={selectedDepartments.length === departments.length ? 'default' : 'secondary'}
+                  size="sm"
+                  onClick={selectAllDepartments}
+                >
+                  Select All
+                </Button>
                 {departments.map((dept) => (
                   <Button
                     key={dept.id}
