@@ -41,6 +41,13 @@ export default function HomePage() {
     fetchData();
   }, []);
 
+  // Reset to card view when switching to "All Applications"
+  useEffect(() => {
+    if (viewMode === 'all') {
+      setDisplayType('card');
+    }
+  }, [viewMode]);
+
   const fetchData = async () => {
     try {
       const [appsRes, deptsRes, myAppsRes] = await Promise.all([
@@ -239,35 +246,37 @@ export default function HomePage() {
           </div>
           
           <div className="flex items-center gap-2">
-            <div className="flex gap-1 border rounded-md p-1">
-              <Button
-                variant={displayType === 'card' ? 'secondary' : 'ghost'}
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => setDisplayType('card')}
-                title="Card View"
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={displayType === 'thumbnail' ? 'secondary' : 'ghost'}
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => setDisplayType('thumbnail')}
-                title="Thumbnail View"
-              >
-                <Grid3x3 className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={displayType === 'list' ? 'secondary' : 'ghost'}
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => setDisplayType('list')}
-                title="List View"
-              >
-                <List className="h-4 w-4" />
-              </Button>
-            </div>
+            {viewMode === 'my' && (
+              <div className="flex gap-1 border rounded-md p-1">
+                <Button
+                  variant={displayType === 'card' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => setDisplayType('card')}
+                  title="Card View"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={displayType === 'thumbnail' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => setDisplayType('thumbnail')}
+                  title="Thumbnail View"
+                >
+                  <Grid3x3 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={displayType === 'list' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => setDisplayType('list')}
+                  title="List View"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
             <Button
               variant="default"
               size="sm"
