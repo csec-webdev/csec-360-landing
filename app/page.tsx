@@ -48,10 +48,16 @@ export default function HomePage() {
     }
   }, []);
 
-  // Reset to card view when switching to "All Applications"
+  // Load saved preference when switching to My Applications, reset when switching to All Applications
   useEffect(() => {
     if (viewMode === 'all') {
       setDisplayType('card');
+    } else if (viewMode === 'my') {
+      // Load saved preference when switching to My Applications
+      const savedDisplayType = localStorage.getItem('myAppsDisplayType');
+      if (savedDisplayType && (savedDisplayType === 'card' || savedDisplayType === 'thumbnail' || savedDisplayType === 'list')) {
+        setDisplayType(savedDisplayType as 'card' | 'thumbnail' | 'list');
+      }
     }
   }, [viewMode]);
 
